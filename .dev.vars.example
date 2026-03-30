@@ -1,0 +1,5 @@
+# Copy to .dev.vars for local development (never commit .dev.vars)
+# BROADCAST_SECRET authenticates internal Worker→DO broadcast calls.
+# Set to any random string in dev; use `wrangler secret put BROADCAST_SECRET` in production.
+# If unset, broadcast calls are unauthenticated (acceptable for local dev only).
+BROADCAST_SECRET=dev-secret-change-me

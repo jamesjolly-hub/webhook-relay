@@ -16,14 +16,17 @@ const BASE = "http://webhook-relay.workers.dev";
 // ---------------------------------------------------------------------------
 
 describe("Bin creation", () => {
-  it("POST /bins returns 201 with binId", async () => {
+  it("POST /bins returns 201 with binId and hookUrl", async () => {
     const res = await SELF.fetch(`${BASE}/bins`, { method: "POST" });
     expect(res.status).toBe(201);
-    const body = (await res.json()) as { binId: string; createdAt: string; expiresAt: string };
+    const body = (await res.json()) as { binId: string; createdAt: string; expiresAt: string; hookUrl: string };
     expect(typeof body.binId).toBe("string");
     expect(body.binId.length).toBeGreaterThan(0);
     expect(typeof body.createdAt).toBe("string");
     expect(typeof body.expiresAt).toBe("string");
+    // Spec: POST /bins returns a unique URL like /hook/{binId}
+    expect(typeof body.hookUrl).toBe("string");
+    expect(body.hookUrl).toContain(`/hook/${body.binId}`);
   });
 });
 

@@ -65,7 +65,7 @@ export default {
 
     // POST /bins
     if (request.method === "POST" && parts[0] === "bins" && parts.length === 1) {
-      return handleCreateBin(env);
+      return handleCreateBin(request, env);
     }
 
     // DELETE /bins/:binId
@@ -168,7 +168,7 @@ export default {
 // Handlers
 // ---------------------------------------------------------------------------
 
-async function handleCreateBin(env: Env): Promise<Response> {
+async function handleCreateBin(request: Request, env: Env): Promise<Response> {
   const binId = crypto.randomUUID().split("-")[0]; // short 8-char id
   const ttlSeconds = parseInt(env.BIN_TTL_SECONDS ?? "604800", 10);
   const now = new Date();
@@ -188,7 +188,11 @@ async function handleCreateBin(env: Env): Promise<Response> {
     expirationTtl: ttlSeconds,
   });
 
-  return Response.json({ binId, ...meta }, { status: 201 });
+  // Construct the fully-qualified hook URL the caller can use as a webhook target
+  const origin = new URL(request.url).origin;
+  const hookUrl = `${origin}/hook/${binId}`;
+
+  return Response.json({ binId, hookUrl, ...meta }, { status: 201 });
 }
 
 async function handleDeleteBin(binId: string, env: Env): Promise<Response> {

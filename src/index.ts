@@ -437,6 +437,9 @@ async function handleInspectorUI(binId: string, env: Env): Promise<Response> {
     const origin = location.origin;
     document.querySelector('.capture-url').textContent = origin + '/bins/' + binId + '/capture';
 
+    function escHtml(s) {
+      return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+    }
     async function loadEvents() {
       const res = await fetch('/bins/' + binId + '/events');
       const data = await res.json();
@@ -447,7 +450,7 @@ async function handleInspectorUI(binId: string, env: Env): Promise<Response> {
         return;
       }
       ul.innerHTML = data.events.map(e =>
-        '<li>[' + e.capturedAt + '] ' + e.method + ' ' + e.path + ' (' + e.id + ')</li>'
+        '<li>[' + escHtml(e.capturedAt) + '] ' + escHtml(e.method) + ' ' + escHtml(e.path) + ' (' + escHtml(e.id) + ')</li>'
       ).join('');
     }
 

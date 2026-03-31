@@ -175,6 +175,49 @@ describe("GET /bins/:binId", () => {
 });
 
 // ---------------------------------------------------------------------------
+// Spec alias: GET /bins/:binId/requests → same as /bins/:binId/events
+// ---------------------------------------------------------------------------
+
+describe("GET /bins/:binId/requests (spec alias for /events)", () => {
+  it("returns same event list as /bins/:binId/events", async () => {
+    const binRes = await SELF.fetch(`${BASE}/bins`, { method: "POST" });
+    const { binId } = (await binRes.json()) as { binId: string };
+
+    await SELF.fetch(`${BASE}/bins/${binId}/capture`, {
+      method: "POST",
+      body: "alias-requests-test",
+    });
+
+    const requestsRes = await SELF.fetch(`${BASE}/bins/${binId}/requests`);
+    expect(requestsRes.status).toBe(200);
+    const body = (await requestsRes.json()) as { events: unknown[]; total: number };
+    expect(body.total).toBe(1);
+    expect(body.events.length).toBe(1);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Spec alias: GET /bins/:binId/live → WebSocket upgrade (101)
+// ---------------------------------------------------------------------------
+
+describe("GET /bins/:binId/live (spec alias for /tail)", () => {
+  it("returns 101 Switching Protocols for WebSocket upgrade", async () => {
+    const binRes = await SELF.fetch(`${BASE}/bins`, { method: "POST" });
+    const { binId } = (await binRes.json()) as { binId: string };
+
+    const wsRes = await SELF.fetch(`${BASE}/bins/${binId}/live`, {
+      headers: {
+        Upgrade: "websocket",
+        Connection: "Upgrade",
+        "Sec-WebSocket-Key": "dGhlIHNhbXBsZSBub25jZQ==",
+        "Sec-WebSocket-Version": "13",
+      },
+    });
+    expect(wsRes.status).toBe(101);
+  });
+});
+
+// ---------------------------------------------------------------------------
 // 404 cases
 // ---------------------------------------------------------------------------
 

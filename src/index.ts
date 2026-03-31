@@ -368,12 +368,22 @@ async function handleReplay(
     }
   }
 
-  const replayResponse = await fetch(body.targetUrl, {
-    method: event.method,
-    headers: replayHeaders,
-    body: replayBody,
-    signal: AbortSignal.timeout(15_000),
-  });
+  let replayResponse: Response;
+  try {
+    replayResponse = await fetch(body.targetUrl, {
+      method: event.method,
+      headers: replayHeaders,
+      body: replayBody,
+      signal: AbortSignal.timeout(15_000),
+    });
+  } catch (err) {
+    // Network error (DNS failure, connection refused, timeout, etc.)
+    const errorMsg = err instanceof Error ? err.message : "Network error during replay";
+    return Response.json(
+      { eventId, targetUrl: body.targetUrl, error: errorMsg, replayOk: false },
+      { status: 502 }
+    );
+  }
 
   return Response.json({
     eventId,

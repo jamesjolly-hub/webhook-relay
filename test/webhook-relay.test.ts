@@ -221,6 +221,83 @@ describe("GET /bins/:binId/live (spec alias for /tail)", () => {
 });
 
 // ---------------------------------------------------------------------------
+// Replay endpoint
+// ---------------------------------------------------------------------------
+
+describe("POST /bins/:binId/replay/:eventId", () => {
+  it("returns 404 for unknown eventId", async () => {
+    const binRes = await SELF.fetch(`${BASE}/bins`, { method: "POST" });
+    const { binId } = (await binRes.json()) as { binId: string };
+
+    const res = await SELF.fetch(`${BASE}/bins/${binId}/replay/nonexistent-event-id-xyz`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ targetUrl: "http://webhook-relay.workers.dev/bins/x/capture" }),
+    });
+    expect(res.status).toBe(404);
+  });
+
+  it("returns 400 when targetUrl is missing from request body", async () => {
+    const binRes = await SELF.fetch(`${BASE}/bins`, { method: "POST" });
+    const { binId } = (await binRes.json()) as { binId: string };
+
+    // Capture an event first
+    const captureRes = await SELF.fetch(`${BASE}/bins/${binId}/capture`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ hello: "world" }),
+    });
+    const { eventId } = (await captureRes.json()) as { eventId: string };
+
+    // Replay without targetUrl — must get 400
+    const replayRes = await SELF.fetch(`${BASE}/bins/${binId}/replay/${eventId}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({}),
+    });
+    expect(replayRes.status).toBe(400);
+    const body = (await replayRes.json()) as { error: string };
+    expect(typeof body.error).toBe("string");
+    expect(body.error).toContain("targetUrl");
+  });
+
+  it("returns 502 with error field when target URL is unreachable", async () => {
+    // Create bin and capture an event
+    const binRes = await SELF.fetch(`${BASE}/bins`, { method: "POST" });
+    const { binId } = (await binRes.json()) as { binId: string };
+
+    const captureRes = await SELF.fetch(`${BASE}/bins/${binId}/capture`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "replay-network-error-test" }),
+    });
+    expect(captureRes.status).toBe(201);
+    const { eventId } = (await captureRes.json()) as { eventId: string };
+
+    // Replay to an unreachable host — should get 502 with error (not a crash)
+    // This exercises the full handleReplay code path: event lookup → body reconstruct
+    // → header filter → fetch (fails) → 502 error response
+    const replayRes = await SELF.fetch(`${BASE}/bins/${binId}/replay/${eventId}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ targetUrl: "http://localhost:19999/unreachable" }),
+    });
+    expect(replayRes.status).toBe(502);
+    const body = (await replayRes.json()) as {
+      eventId: string;
+      targetUrl: string;
+      error: string;
+      replayOk: boolean;
+    };
+    expect(body.eventId).toBe(eventId);
+    expect(body.targetUrl).toBe("http://localhost:19999/unreachable");
+    expect(typeof body.error).toBe("string");
+    expect(body.error.length).toBeGreaterThan(0);
+    expect(body.replayOk).toBe(false);
+  });
+});
+
+// ---------------------------------------------------------------------------
 // 404 cases
 // ---------------------------------------------------------------------------
 

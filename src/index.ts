@@ -307,7 +307,7 @@ async function handleListEvents(binId: string, env: Env): Promise<Response> {
   const eventIds = await getEventIds(binId, env);
   const events: CapturedEvent[] = [];
 
-  for (const id of eventIds.slice(0, 50)) {
+  for (const id of eventIds.slice(0, 100)) {
     const raw = await env.RELAY_STORE.get(eventKey(binId, id));
     if (raw) {
       events.push(JSON.parse(raw) as CapturedEvent);
